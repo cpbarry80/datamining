@@ -1,22 +1,26 @@
 import pandas as pd
 import numpy as np
+from datetime import datetime
 
+def get_data(df, frame):
 
-def get_data(df1, frame):
-    df = df1.copy()
-    df = df.set_index('dtimestamp')
-    list1 = df.groupby('Date')['Sensor Glucose (mg/dL)'].count().where(lambda x:x>0.8*288).dropna().index.tolist() 
-    df = df.loc[df['Date'].isin(list1)]
+    days = df.groupby('Date')['Sensor Glucose (mg/dL)'].count().index
+    df = df.loc[df['Date'].isin(days)]
 
-    starting = df.between_time(frame[0],frame[1])[['Date','Time','Sensor Glucose (mg/dL)']]
+    # filter relevant days for desired time of day
+    format_string = '%H:%M:%S'
+    start = datetime.strptime(frame[0], format_string)
+    end = datetime.strptime(frame[1], format_string)
+    df['Time'] = pd.to_datetime(df['Time'], format='%H:%M:%S')
+    starting = (df.loc[(df['Time'] >= start) & (df['Time'] <= end)])
 
     results = [
-        (starting.loc[df['Sensor Glucose (mg/dL)']>180].groupby('Date')['Sensor Glucose (mg/dL)'].count()/288*100).mean(),
-        (starting.loc[df['Sensor Glucose (mg/dL)']>250].groupby('Date')['Sensor Glucose (mg/dL)'].count()/288*100).mean(),
-        (starting.loc[(df['Sensor Glucose (mg/dL)']>=70) & (df['Sensor Glucose (mg/dL)']<=180)].groupby('Date')['Sensor Glucose (mg/dL)'].count()/288*100).mean(),
-        (starting.loc[(df['Sensor Glucose (mg/dL)']>=70) & (df['Sensor Glucose (mg/dL)']<=150)].groupby('Date')['Sensor Glucose (mg/dL)'].count()/288*100).mean(),
-        (starting.loc[df['Sensor Glucose (mg/dL)']<70].groupby('Date')['Sensor Glucose (mg/dL)'].count()/288*100).mean(),
-        (starting.loc[df['Sensor Glucose (mg/dL)']<54].groupby('Date')['Sensor Glucose (mg/dL)'].count()/288*100).mean()
+        (starting.loc[df['Sensor Glucose (mg/dL)'] > 180].groupby('Date')['Sensor Glucose (mg/dL)'].count()/288 * 100).mean(),
+        (starting.loc[df['Sensor Glucose (mg/dL)'] > 250].groupby('Date')['Sensor Glucose (mg/dL)'].count()/288 * 100).mean(),
+        (starting.loc[(df['Sensor Glucose (mg/dL)'] >= 70) & (df['Sensor Glucose (mg/dL)'] <= 180)].groupby('Date')['Sensor Glucose (mg/dL)'].count()/288 * 100).mean(),
+        (starting.loc[(df['Sensor Glucose (mg/dL)'] >= 70) & (df['Sensor Glucose (mg/dL)'] <= 150)].groupby('Date')['Sensor Glucose (mg/dL)'].count()/288 * 100).mean(),
+        (starting.loc[df['Sensor Glucose (mg/dL)'] < 70].groupby('Date')['Sensor Glucose (mg/dL)'].count()/288 * 100).mean(),
+        (starting.loc[df['Sensor Glucose (mg/dL)'] < 54].groupby('Date')['Sensor Glucose (mg/dL)'].count()/288 * 100).mean()
         ]
 
-    return [i for i in results]
+    return [i if not np.isnan(i) else ""for i in results]

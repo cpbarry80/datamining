@@ -1,28 +1,27 @@
 import pandas as pd
 from auto import get_data
 import csv
+import numpy as np
 
 cgm = pd.read_csv("CGMData.csv")
 insulin = pd.read_csv("InsulinData.csv")
-# cgm = pd.read_csv('CGMData.csv',low_memory = False, usecols = ['Date','Time','Sensor Glucose (mg/dL)'])
-# insulin = pd.read_csv('InsulinData.csv',low_memory = False)
 
+#clean CGM
+cgm['dtimestamp'] = pd.to_datetime(cgm['Date'] + ' ' + cgm['Time'],  format='%m/%d/%Y %H:%M:%S')
+missing_data = cgm[cgm['Sensor Glucose (mg/dL)'].isna()]['Date'].unique()
+cgm = cgm.loc[~cgm['Date'].isin(list(missing_data))]
 
-######
-cgm['dtimestamp'] = pd.to_datetime(cgm['Date'] + ' ' + cgm['Time'])
-date_to_remove = cgm[cgm['Sensor Glucose (mg/dL)'].isna()]['Date'].unique()
-cgm = cgm.set_index('Date').drop(index = date_to_remove).reset_index()
 insulin['dtimestamp'] = pd.to_datetime(insulin['Date'] + ' ' + insulin['Time'])
-start_of_auto_mode = insulin.sort_values(by = 'dtimestamp', ascending = True).loc[insulin['Alarm'] == 'AUTO MODE ACTIVE PLGM OFF'].iloc[0]['dtimestamp']
 
-auto_df = cgm.sort_values(by = 'dtimestamp',ascending = True).loc[cgm['dtimestamp']>=start_of_auto_mode]
-manual_df = cgm.sort_values(by = 'dtimestamp',ascending = True).loc[cgm['dtimestamp']<start_of_auto_mode]
+auto_time = insulin.loc[insulin['Alarm'] == 'AUTO MODE ACTIVE PLGM OFF'].dtimestamp.values.max()
 
-####
+auto_df = cgm.sort_values(by = 'dtimestamp', ascending = True).loc[cgm['dtimestamp'] >= auto_time]
+manual_df = cgm.sort_values(by = 'dtimestamp', ascending = True).loc[cgm['dtimestamp'] < auto_time]
 
-frames = {"overnight": ['0:00:00','05:59:59'], 
-            "daytime": ['6:00:00','23:59:59'], 
-            "whole day": ['0:00:00','23:59:59']}
+
+frames = {"night": ['0:00:00','05:59:59'], 
+            "day": ['6:00:00','23:59:59'], 
+            "wholeday": ['0:00:00','23:59:59']}
 
 modes = ["Manual", "Auto"]
 
@@ -36,6 +35,7 @@ for mode in modes:
             mode_time = get_data(auto_df, defintion)
         [total_mode.append(i) for i in mode_time]
     csv_data.append(total_mode)
+
 
 
 file = open('Result.csv', 'w', newline ='')
