@@ -19,11 +19,16 @@ def get_meal_data(first=True):
         insulin = pd.read_csv("Insulin_patient2.csv")
 
     try:
-        insulin['dtimestamp'] = pd.to_datetime(insulin['Date'] + ' ' + insulin['Time'],  format='%m-%d-%Y %H:%M:%S')
+        insulin['dtimestamp'] = pd.to_datetime(insulin['Date'].str.replace(" 00:00:00", "") + ' ' + insulin['Time'],  format='%Y-%m-%d %H:%M:%S')
     except:
-        insulin['dtimestamp'] = pd.to_datetime(insulin['Date'] + ' ' + insulin['Time'],  format='%m/%d/%Y %H:%M:%S')
+        insulin['dtimestamp'] = pd.to_datetime(insulin['Date'].str.replace(" 00:00:00", "") + ' ' + insulin['Time'],  format='%m/%d/%Y %H:%M:%S')
 
-    cgm['dtimestamp'] = pd.to_datetime(cgm['Date'] + ' ' + cgm['Time'],  format='%m/%d/%Y %H:%M:%S')
+    try:
+        cgm['dtimestamp'] = pd.to_datetime(cgm['Date'].str.replace(" 00:00:00", "") + ' ' + cgm['Time'],  format='%Y-%m-%d %H:%M:%S')
+    except:
+        cgm['dtimestamp'] = pd.to_datetime(cgm['Date'].str.replace(" 00:00:00", "") + ' ' + cgm['Time'],  format='%m/%d/%Y %H:%M:%S')
+
+
     meal_data = insulin.loc[insulin['BWZ Carb Input (grams)'].notna() & insulin['BWZ Carb Input (grams)']>0.0]
     meal_data_copy = meal_data.copy()
 
