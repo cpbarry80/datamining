@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from scipy.fftpack import fft, ifft,rfft
 
 
 
@@ -51,38 +52,62 @@ def get_meal_data(first=True):
 
 
 
+meal, fast = get_meal_data()
+secondmeal, secondfast = get_meal_data(first=False)
+
+
 
 def get_feature_matrix(meal):
     '''FEATURES 
     https://www.coursera.org/learn/cse572/lecture/MPLNQ/project-2-machine-model-training-introductory-video-2
     1. time difference between when the meal was taken versus when the CGM reached maximum
     2. ( CGM max (aka Dg) - CGM meal ) / CGM meal   
-    3. fast fourier transform....in this case, what we'll have is you will have the power at frequency F1 and F1 and you'll have the power at frequency,F2 and F2. So you have four different numbers.
+    3. fast fourier transform....in this case, what we'll have is you will have the power at.... So you have four different numbers.
+        a. frequency F1
+        b. F1 
+        c. power at frequency,F2 
+        d. F2
     4. slope of cgm right at meal time is very important feature. just subtract 2 diff data points
     5. lets say after that you get a difference, you take another difference. the double difference is proprotional to the meal amount'''
 
-    meal = meal.values
-    fast = fast.values
-    feature_matrix = np.zeros((len(meal)+len(fast), 4))
+
+    freq_f1=[]
+    f1=[]
+    freq_f2=[]
+    f2=[]
+
+    #4 and #5
+    tm=meal.iloc[:,22:25].idxmin(axis=1)
+    maximum=meal.iloc[:,5:19].idxmax(axis=1)
+    diff=[]
+    diff2=[]
+
+
+    # 1,2 and 3
     for i in range(len(meal)):
-        feature_matrix[i, 0] = np.max(meal[i, :]) - meal[i, 0]
-        feature_matrix[i, 1] = (np.max(meal[i, :]) - meal[i, 0])/meal[i, 0]
-        feature_matrix[i, 2] = np.max(meal[i, :]) - np.min(meal[i, :])
-        feature_matrix[i, 3] = meal[i, 1] - meal[i, 0]
-    for i in range(len(fast)):
-        feature_matrix[i+len(meal), 0] = np.max(fast[i, :]) - fast[i, 0]
-        feature_matrix[i+len(meal), 1] = (np.max(fast[i, :]) - fast[i, 0])/fast[i, 0]
-        feature_matrix[i+len(meal), 2] = np.max(fast[i, :]) - np.min(fast[i, :])
-        feature_matrix[i+len(meal), 3] = fast[i, 1] - fast[i, 0]
-    return feature_matrix
+        array=abs(rfft(meal.iloc[:,0:30].iloc[i].values.tolist())).tolist()
+        sorted_array=abs(rfft(meal.iloc[:,0:30].iloc[i].values.tolist())).tolist()
+        sorted_array.sort()
+        freq_f1.append(sorted_array[-2])
+        freq_f2.append(sorted_array[-3])
+        f1.append(array.index(sorted_array[-2]))
+        f2.append(array.index(sorted_array[-3]))
+
+        diff.append(np.diff(meal.iloc[:,maximum[i]:tm[i]].iloc[i].tolist()).max())
+        diff2.append(np.diff(np.diff(meal.iloc[:,maximum[i]:tm[i]].iloc[i].tolist())).max())
+
+    matrix=pd.DataFrame()
+    matrix['tau_time'] = (meal.iloc[:,22:25].idxmin(axis=1)-meal.iloc[:,5:19].idxmax(axis=1))*5
+    matrix['difference_in_glucose_normalized'] = (meal.iloc[:,5:19].max(axis=1)-meal.iloc[:,22:25].min(axis=1))/(meal.iloc[:,22:25].min(axis=1))
+    matrix['freq_f1'] = freq_f1
+    matrix['freq_f2'] = freq_f2
+    matrix['1stDifferential'] = diff
+    matrix['2ndDifferential'] = diff2
+
+    return matrix
 
 
-
-
-
-meal, fast = get_meal_data()
-secondmeal, secondfast = get_meal_data(first=False)
-
+get_feature_matrix(meal)
 # validate the machine aka model
 # 1. train the model on 80% of the data
 # 2. test the model on 20% of the data
