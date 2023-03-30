@@ -29,9 +29,11 @@ def get_meal_data(first=True):
         cgm['dtimestamp'] = pd.to_datetime(cgm['Date'].str.replace(" 00:00:00", "") + ' ' + cgm['Time'],  format='%m/%d/%Y %H:%M:%S')
 
 
+### https://edstem.org/us/courses/37309/discussion/2851048
+### logic for extracting the times specifc to the meal here
+
     meal_data = insulin.loc[insulin['BWZ Carb Input (grams)'].notna() & insulin['BWZ Carb Input (grams)']>0.0]
     meal_data_copy = meal_data.copy()
-
     meal_data_copy.loc[:, 'delta'] = meal_data_copy['dtimestamp'].diff().dt.total_seconds().div(60, fill_value=0)
     meal_data_copy = meal_data_copy.loc[meal_data_copy['delta'] < -120]
     
@@ -62,7 +64,7 @@ secondmeal, secondfast = get_meal_data(first=False)
 
 
 
-def get_feature_matrix(meal):
+def get_feature_matrix(meal_data):
     '''FEATURES 
     https://www.coursera.org/learn/cse572/lecture/MPLNQ/project-2-machine-model-training-introductory-video-2
     1. time difference between when the meal was taken versus when the CGM reached maximum
@@ -76,19 +78,20 @@ def get_feature_matrix(meal):
     5. lets say after that you get a difference, you take another difference. the double difference is proprotional to the meal amount'''
 
 
+    meal_data = meal_data[meal_data.isnull().sum(axis=1) < 7].interpolate(method='linear',axis=1)
+    meal_data = meal_data[meal_data.isnull().sum(axis=1) < 1].reset_index(drop=True)
+
     freq_f1=[]
     f1=[]
     freq_f2=[]
     f2=[]
 
-    #4 and #5
     tm=meal.iloc[:,22:25].idxmin(axis=1)
     maximum=meal.iloc[:,5:19].idxmax(axis=1)
     diff=[]
     diff2=[]
 
 
-    # 1,2 and 3
     for i in range(len(meal)):
         array=abs(rfft(meal.iloc[:,0:30].iloc[i].values.tolist())).tolist()
         sorted_array=abs(rfft(meal.iloc[:,0:30].iloc[i].values.tolist())).tolist()
@@ -98,14 +101,16 @@ def get_feature_matrix(meal):
         f1.append(array.index(sorted_array[-2]))
         f2.append(array.index(sorted_array[-3]))
 
-        diff.append(np.diff(meal.iloc[:,maximum[i]:tm[i]].iloc[i].tolist()).max())
-        diff2.append(np.diff(np.diff(meal.iloc[:,maximum[i]:tm[i]].iloc[i].tolist())).max())
+        diff.append(np.diff(meal.iloc[:,int(maximum[i]):int(tm[i])].iloc[i].tolist()).max())
+        diff2.append(np.diff(np.diff(meal.iloc[:,int(maximum[i]):int(tm[i])].iloc[i].tolist())).max())
 
     matrix=pd.DataFrame()
     matrix['tau_time'] = (meal.iloc[:,22:25].idxmin(axis=1)-meal.iloc[:,5:19].idxmax(axis=1))*5
     matrix['difference_in_glucose_normalized'] = (meal.iloc[:,5:19].max(axis=1)-meal.iloc[:,22:25].min(axis=1))/(meal.iloc[:,22:25].min(axis=1))
     matrix['freq_f1'] = freq_f1
     matrix['freq_f2'] = freq_f2
+    matrix['f1'] = f1
+    matrix['f2'] = f2
     matrix['1stDifferential'] = diff
     matrix['2ndDifferential'] = diff2
 
