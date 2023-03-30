@@ -87,13 +87,8 @@ def get_feature_matrix(meal, nans=7, s1=9, e1=24, s2=20, e2=23, fulllength=30):
     power_f2=[]
     f2=[]
 
-
-    maximum = meal.iloc[:,s1:e1].idxmax(axis=1)
-    tm = meal.iloc[:,s2:e2].idxmin(axis=1)
-
     diff=[]
-    diff2=[]
-
+    dubdiff=[]
 
     for i in range(len(meal)):
         fft = abs(rfft(meal.iloc[i].values))
@@ -110,13 +105,13 @@ def get_feature_matrix(meal, nans=7, s1=9, e1=24, s2=20, e2=23, fulllength=30):
         f1.append(f1location)
         f2.append(f2location)
 
-        diff.append(np.diff(meal.iloc[:,int(maximum[i]):int(tm[i])].iloc[i].tolist()).max())
-        diff2.append(np.diff(np.diff(meal.iloc[:,int(maximum[i]):int(tm[i])].iloc[i].tolist())).max())
+        diff.append(np.diff(meal.iloc[:, 9:11].iloc[i])[0])
+        dubdiff.append(np.diff(meal.iloc[:, 9:11].iloc[i])[0])**2
 
-    matrix=pd.DataFrame()
-    matrix['tau'] = (meal.iloc[:,s1:e2].idxmin(axis=1) - meal.iloc[:,s1:e1].idxmax(axis=1)) * 5
-    #cgm max - cgm min
-    matrix['glucose_diff_normalized'] = (meal.iloc[:,s1:e1].max(axis=1) - meal.iloc[:,s2:e2].min(axis=1)) / (meal.iloc[:,s2:e2].min(axis=1))
+
+    matrix = pd.DataFrame()
+    matrix['tau'] = (meal.idxmin(axis=1) - meal.idxmax(axis=1)) * 5
+    matrix['glucose_diff_normalized'] = (meal.max(axis=1) - meal.min(axis=1)) / (meal.min(axis=1))
     
     
     matrix['power_f1'] = power_f1
@@ -124,7 +119,7 @@ def get_feature_matrix(meal, nans=7, s1=9, e1=24, s2=20, e2=23, fulllength=30):
     matrix['f1'] = f1
     matrix['f2'] = f2
     matrix['1stDifferential'] = diff
-    matrix['2ndDifferential'] = diff2
+    matrix['2ndDifferential'] = dubdiff
 
     return matrix
 
