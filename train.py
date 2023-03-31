@@ -1,8 +1,13 @@
 import pandas as pd
 import numpy as np
-from scipy.fftpack import fft, ifft,rfft
-
-
+from scipy.fftpack import fft, ifft, rfft
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import KFold, RepeatedKFold
+from joblib import dump, load
+from sklearn.utils import shuffle
+from sklearn.model_selection import train_test_split, KFold, GridSearchCV
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
 
 
 def get_meal_data(first=True):
@@ -58,7 +63,7 @@ def get_meal_data(first=True):
 
 
 
-def get_feature_matrix(meal, nans=7, s1=9, e1=24, s2=20, e2=23, fulllength=30):
+def get_feature_matrix(meal, nans=7):
     '''
     args: nans: number of nans allowed in a row
     s1: start of meal
@@ -91,14 +96,14 @@ def get_feature_matrix(meal, nans=7, s1=9, e1=24, s2=20, e2=23, fulllength=30):
     dubdiff=[]
 
     for i in range(len(meal)):
-        fft = abs(rfft(meal.iloc[i].values))
-        sort_fft = fft.copy()
-        sort_fft.sort(reverse=True)
+        frontierft = abs(fft(meal.iloc[i].values)).tolist()
+        sort_fft = frontierft.copy()
+        sort_fft.sort()
 
-        f1power = sort_fft[1] #skip the first one
-        f1location = fft.index(f1power)
-        f2power = sort_fft[2]
-        f2location = fft.index(f2power)
+        f1power = sort_fft[-2] #skip the first one
+        f1location = frontierft.index(f1power)
+        f2power = sort_fft[-3]
+        f2location = frontierft.index(f2power)
 
         power_f1.append(f1power)
         power_f2.append(f2power)
@@ -106,7 +111,7 @@ def get_feature_matrix(meal, nans=7, s1=9, e1=24, s2=20, e2=23, fulllength=30):
         f2.append(f2location)
 
         diff.append(np.diff(meal.iloc[:, 9:11].iloc[i])[0])
-        dubdiff.append(np.diff(meal.iloc[:, 9:11].iloc[i])[0])**2
+        dubdiff.append(np.diff(meal.iloc[:, 9:11].iloc[i])[0]**2)
 
 
     matrix = pd.DataFrame()
@@ -131,13 +136,13 @@ meal, fast = get_meal_data()
 secondmeal, secondfast = get_meal_data(first=False)
 
 matrix_firstmeal = get_feature_matrix(meal)
-matrix_first_no_meal = get_feature_matrix(fast, s1=0, e1=19, s2=0, e2=24, fulllength=24)
+matrix_first_no_meal = get_feature_matrix(fast)
 
-matrix_secondmeal = get_feature_matrix(secondmeal, fulllength=24)
-matrix_secondfast = get_feature_matrix(secondfast, s1=0, e1=19, s2=0, e2=24, fulllength=24)
+matrix_secondmeal = get_feature_matrix(secondmeal)
+matrix_second_no_meal = get_feature_matrix(secondfast)
 
-
-
+meal_feature_matrix=pd.concat([matrix_firstmeal, matrix_secondmeal]).reset_index().drop(columns='index')
+non_meal_feature_matrix=pd.concat([matrix_first_no_meal, matrix_second_no_meal]).reset_index().drop(columns='index')
 
 
 # validate the machine aka model
@@ -145,6 +150,35 @@ matrix_secondfast = get_feature_matrix(secondfast, s1=0, e1=19, s2=0, e2=24, ful
 # 2. test the model on 20% of the data
 #### we need to use some metrics, like accuracy, precision, recall, f1 score, etc. to evaluate the model.
 
+meal_feature_matrix['label']=1
+non_meal_feature_matrix['label']=0
 
-# test.py
-# reads the model and test data and saves to results.csv
+data = pd.concat([meal_feature_matrix, non_meal_feature_matrix], ignore_index=True)
+data = data.sample(frac=1, random_state=1).reset_index(drop=True)
+
+X = data.drop(columns=['label'])
+y = data['label']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+
+pipeline = Pipeline([('scaler', StandardScaler()), 
+                     ('clf', DecisionTreeClassifier())])
+
+param_grid = {'clf__criterion': ['gini', 'entropy'], 
+              'clf__max_depth': [3, 5, 7, None], 
+              'clf__min_samples_split': [2, 5, 10], 
+              'clf__min_samples_leaf': [1, 2, 4]}
+
+grid_search = GridSearchCV(pipeline, param_grid=param_grid, cv=10)
+grid_search.fit(X_train, y_train)
+
+print('Best hyperparameters:', grid_search.best_params_)
+print('Accuracy score:', grid_search.best_score_)
+
+# Evaluate model on test set
+accuracy = grid_search.score(X_test, y_test)
+print('Test set accuracy:', accuracy)
+
+dump(grid_search, 'grid_search.pickle')
+
+
