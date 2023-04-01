@@ -66,10 +66,6 @@ def get_meal_data(first=True):
 def get_feature_matrix(meal, nans=7):
     '''
     args: nans: number of nans allowed in a row
-    s1: start of meal
-    e1: end of meal
-    s2: start of fast
-    e2: end of fast
     
     FEATURES 
     https://www.coursera.org/learn/cse572/lecture/MPLNQ/project-2-machine-model-training-introductory-video-2
@@ -123,8 +119,8 @@ def get_feature_matrix(meal, nans=7):
     matrix['power_f2'] = power_f2
     matrix['f1'] = f1
     matrix['f2'] = f2
-    matrix['1stDifferential'] = diff
-    matrix['2ndDifferential'] = dubdiff
+    matrix['diffa'] = diff
+    matrix['diffb'] = dubdiff
 
     return matrix
 
