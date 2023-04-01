@@ -3,11 +3,11 @@ import numpy as np
 from scipy.fftpack import fft, ifft, rfft
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import KFold, RepeatedKFold
-from joblib import dump, load
 from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split, KFold, GridSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+import pickle
 
 
 def get_meal_data(first=True):
@@ -179,6 +179,11 @@ print('Accuracy score:', grid_search.best_score_)
 accuracy = grid_search.score(X_test, y_test)
 print('Test set accuracy:', accuracy)
 
-dump(grid_search, 'grid_search.pickle')
+
+with open('grid_search.pickle', 'wb') as f:
+    pickle.dump(grid_search, f)
+
+
+
 
 
