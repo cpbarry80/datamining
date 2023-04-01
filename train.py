@@ -17,11 +17,11 @@ def get_meal_data(first=True):
         handling missing data. this is a big issue and part of the learning...'''
 
     if first:
-        cgm = pd.read_csv("CGMData.csv")
-        insulin = pd.read_csv("InsulinData.csv")
+        cgm = pd.read_csv("CGMData.csv",  low_memory=False)
+        insulin = pd.read_csv("InsulinData.csv",  low_memory=False)
     else:
-        cgm = pd.read_csv("CGM_patient2.csv")
-        insulin = pd.read_csv("Insulin_patient2.csv")
+        cgm = pd.read_csv("CGM_patient2.csv",  low_memory=False)
+        insulin = pd.read_csv("Insulin_patient2.csv", low_memory=False)
 
     try:
         insulin['dtimestamp'] = pd.to_datetime(insulin['Date'].str.replace(" 00:00:00", "") + ' ' + insulin['Time'],  format='%Y-%m-%d %H:%M:%S')
@@ -168,12 +168,12 @@ param_grid = {'clf__criterion': ['gini', 'entropy'],
 grid_search = GridSearchCV(pipeline, param_grid=param_grid, cv=10)
 grid_search.fit(X_train, y_train)
 
-print('Best hyperparameters:', grid_search.best_params_)
-print('Accuracy score:', grid_search.best_score_)
+# print('Best hyperparameters:', grid_search.best_params_)
+# print('Accuracy score:', grid_search.best_score_)
 
 # Evaluate model on test set
 accuracy = grid_search.score(X_test, y_test)
-print('Test set accuracy:', accuracy)
+# print('Test set accuracy:', accuracy)
 
 
 with open('grid_search.pickle', 'wb') as f:
