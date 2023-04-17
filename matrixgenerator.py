@@ -10,56 +10,7 @@ from sklearn.pipeline import Pipeline
 import pickle
 
 
-def get_meal_data():
-
-    '''Meal data comprises a 2hr 30 min stretch of CGM data that  starts from tm-30min and extends to tm+2hrs. 
-        No meal data comprises 2 hrs of raw data that does not have meal intake. 
-        handling missing data. this is a big issue and part of the learning...'''
-
-    cgm = pd.read_csv("CGMData.csv",  low_memory=False)
-    insulin = pd.read_csv("InsulinData.csv",  low_memory=False)
-
-    try:
-        insulin['dtimestamp'] = pd.to_datetime(insulin['Date'].str.replace(" 00:00:00", "") + ' ' + insulin['Time'],  format='%Y-%m-%d %H:%M:%S')
-    except:
-        insulin['dtimestamp'] = pd.to_datetime(insulin['Date'].str.replace(" 00:00:00", "") + ' ' + insulin['Time'],  format='%m/%d/%Y %H:%M:%S')
-
-    try:
-        cgm['dtimestamp'] = pd.to_datetime(cgm['Date'].str.replace(" 00:00:00", "") + ' ' + cgm['Time'],  format='%Y-%m-%d %H:%M:%S')
-    except:
-        cgm['dtimestamp'] = pd.to_datetime(cgm['Date'].str.replace(" 00:00:00", "") + ' ' + cgm['Time'],  format='%m/%d/%Y %H:%M:%S')
-
-
-### https://edstem.org/us/courses/37309/discussion/2851048
-### logic for extracting the times specifc to the meal here
-
-    meal_data = insulin.loc[insulin['BWZ Carb Input (grams)'].notna() & insulin['BWZ Carb Input (grams)']>0.0]
-    meal_data_copy = meal_data.copy()
-    meal_data_copy.loc[:, 'delta'] = meal_data_copy['dtimestamp'].diff().dt.total_seconds().div(60, fill_value=0)
-    meal_data_copy = meal_data_copy.loc[meal_data_copy['delta'] < -120]
-    
-    glucose_data = []
-    no_meal_glucose_data = []
-    mealtimes = meal_data_copy['dtimestamp'].values
-    mealtimes.sort()
-
-    for meal in mealtimes:
-        officialstart = meal - pd.Timedelta(minutes=30)  
-        end = meal + pd.Timedelta(hours=2)    
-        glucose = cgm.loc[(cgm['dtimestamp'] >= officialstart) & (cgm['dtimestamp'] <=end)]['Sensor Glucose (mg/dL)'].values.tolist()
-        glucose_data.append(glucose)
-
-        # no meal data
-        if meal != mealtimes[0]:
-            no_meal = cgm.loc[(cgm['dtimestamp'] <= meal) & (cgm['dtimestamp'] > previous_end)]['Sensor Glucose (mg/dL)'].values.tolist()
-            no_meal_glucose_data.append(no_meal[:24])
-        previous_end = end
-
-    return pd.DataFrame(glucose_data).iloc[:,0:30], pd.DataFrame(no_meal_glucose_data)
-
-
-
-def get_feature_matrix(meal, nans=7):
+def get_feature_matrix(meal):
     '''
     args: nans: number of nans allowed in a row
     
@@ -75,9 +26,6 @@ def get_feature_matrix(meal, nans=7):
     4. slope of cgm right at meal time is very important feature. just subtract 2 consecutive data points
     5. lets say after that you get a difference, you take another difference. the double difference is proprotional to the meal amount'''
 
-
-    meal = meal[meal.isnull().sum(axis=1) < nans].interpolate(method='linear',axis=1, limit_direction="both")
-    meal = meal[meal.isnull().sum(axis=1) < 1].reset_index(drop=True)
 
     power_f1=[]
     f1=[]
