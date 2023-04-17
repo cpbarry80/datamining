@@ -51,6 +51,7 @@ for meal in mealtimes:
     officialstart = meal - pd.Timedelta(minutes=30)  
     end = meal + pd.Timedelta(hours=2)    
     glucose = cgm.loc[(cgm['dtimestamp'] >= officialstart) & (cgm['dtimestamp'] <=end)]['Sensor Glucose (mg/dL)'].values.tolist()
+
     carbs = insulin.loc[(insulin['dtimestamp'] >= officialstart) & (insulin['dtimestamp'] <=end)]['BWZ Carb Input (grams)']
 
     # should this be the summed values of carbs for this meal? 
@@ -63,6 +64,9 @@ for meal in mealtimes:
     glucose_data.append(glucose)
     previous_end = end
 
+# assign bins to each meal
+meal_data_copy['carb_bin'] = (meal_data_copy['BWZ Carb Input (grams)'] / (min_carbs + 20)).astype(int)
+
 meal = pd.DataFrame(glucose_data).iloc[:,0:30]
 meal = meal[meal.isnull().sum(axis=1) < 7].interpolate(method='linear',axis=1, limit_direction="both")
 meal = meal[meal.isnull().sum(axis=1) < 1].reset_index(drop=True)
@@ -74,6 +78,8 @@ matrix_meal = get_feature_matrix(mealDf)
 matrix_nomeal = get_feature_matrix(nomeal)
 
 #for each meal we need a bin number
+ground_truth = []
+
 
 Meal_features=pd.concat([matrix_meal, matrix_nomeal]).reset_index().drop(columns='index')
 # Meal_features=createmealfeaturematrix(mealDf)
