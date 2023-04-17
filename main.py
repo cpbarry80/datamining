@@ -1,4 +1,4 @@
-
+from matrixgenerator import get_meal_data, get_feature_matrix
 
 
 # https://www.coursera.org/learn/cse572/lecture/sxDM5/project-3-cluster-validation-introductory-video
@@ -13,6 +13,16 @@
         # the meal amount in bins of size 20. Consider each row in the meal data matrix that you generated in
         # Project 2. Put them in the respective bins according to their meal amount label.
         # In total, you should have n = (max-min)/20 bins.
+
+meal, nomeal = get_meal_data()
+
+meal_feature_matrix = get_feature_matrix(meal)
+no_meal_feature_matrix = get_feature_matrix(nomeal)
+
+
+# meal_feature_matrix=pd.concat([matrix_firstmeal, matrix_secondmeal]).reset_index().drop(columns='index')
+# non_meal_feature_matrix=pd.concat([matrix_first_no_meal, matrix_second_no_meal]).reset_index().drop(columns='index')
+
 
 
 # Cluster Meal data based on the amount of carbohydrates in each meal
