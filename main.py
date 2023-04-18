@@ -13,7 +13,11 @@ from numpy.fft import fft
 from sklearn.decomposition import PCA
 import math
 from sklearn.cluster import KMeans,DBSCAN
-
+from sklearn.metrics.cluster import entropy
+import numpy as np
+from scipy.stats import entropy
+import numpy as np
+from sklearn import metrics
 # https://www.coursera.org/learn/cse572/lecture/sxDM5/project-3-cluster-validation-introductory-video
 
 # Extract features from Meal data
@@ -68,133 +72,61 @@ for meal in mealtimes:
 meal_data_copy['carb_bin'] = (meal_data_copy['BWZ Carb Input (grams)'] / (min_carbs + 20)).astype(int)
 
 meal = pd.DataFrame(glucose_data).iloc[:,0:30]
+
+meal_data_copy.reset_index(inplace=True)
+meal_data_copy.drop(meal[meal.isnull().sum(axis=1) >= 7].index, inplace=True, axis=0)
+
 meal = meal[meal.isnull().sum(axis=1) < 7].interpolate(method='linear',axis=1, limit_direction="both")
 meal = meal[meal.isnull().sum(axis=1) < 1].reset_index(drop=True)
 ## end re use of meal matrix from proj 2
+
+#perform clustering
+    # Use the features in your Project 2 to cluster the meal data into n clusters. Use DBSCAN and KMeans.
+    # Report your accuracy of clustering based on SSE, entropy, and purity metrics.
+    # k =N 
+    # but dbscan doesnt take clusters as a parameter. how do you get it to N? if they give you 3 compute SSE for each. then arrange
+    # them in decreasing order of SSE. 
+        # take 1st (max sse) and bisect by kmeans.
+        # then it goes from 3 to 4
+        # this is just 1 solution. up to you how you want to do it.
+
+
 binsize = 20
 nBins = int((max_carbs - min_carbs)/binsize)
 
-matrix_meal = get_feature_matrix(mealDf)
-matrix_nomeal = get_feature_matrix(nomeal)
+meal_features = get_feature_matrix(meal)
 
-#for each meal we need a bin number
-ground_truth = []
+meal_features_scaled = StandardScaler().fit_transform(meal_features)
+kmeans = KMeans(init="random", n_clusters=6, n_init=10, random_state=1)
+kmeans.fit(meal_features_scaled)
+kmeansse=kmeans.inertia_
+
+true_labels = meal_data_copy['carb_bin'].astype(int).to_list()
+cluster_labels = list(kmeans.labels_.astype(int))
+
+value,counts = np.unique(true_labels, return_counts=True)
+kmeansentropy = entropy(value, base=2)
+
+contingency_matrix = metrics.cluster.contingency_matrix(true_labels, cluster_labels)
+kmeanspurity = np.sum(np.amax(contingency_matrix, axis=0)) / np.sum(contingency_matrix) 
 
 
-Meal_features=pd.concat([matrix_meal, matrix_nomeal]).reset_index().drop(columns='index')
-# Meal_features=createmealfeaturematrix(mealDf)
-
-
-
-
-
-pca = PCA(n_components=8)
-principalComponents = pca.fit(Meal_features)
-PCA_mealdata = pca.fit_transform(Meal_features)
-
-kmeans=KMeans(n_clusters=nBins, random_state=0).fit(PCA_mealdata)
-SSE_KMeans=kmeans.inertia_
-
-clusterBinMatrix = [[0 for i in range(nBins)] for i in range(nBins)]
-for i in range(kmeans.labels_.shape[0]):
-    try:
-        clusterBinMatrix[kmeans.labels_[i]][int(mealDf.iloc[i][29])] += 1
-    except:
-        pass
-Kmeans_Entropy =[0,0,0,0,0,0]
-Kmeans_Purity = 0
-totalPoints = sum(sum(clusterBinMatrix,[]))
-for i in range(len(clusterBinMatrix)):
-    Kmeans_Purity += (max(clusterBinMatrix[i])*1.0)/(totalPoints*1.0)
-    for j in range(len(clusterBinMatrix[i])):
-        P = (clusterBinMatrix[i][j]*1.0)/(sum(clusterBinMatrix[i])*1.0)
-        if(P != 0):
-            Kmeans_Entropy[i] += (-P) * math.log(P,2) * (sum(clusterBinMatrix[i])*1.0/(totalPoints)*1.0)    
-Kmeans_Entropy = sum(Kmeans_Entropy)
-
-dbscan = DBSCAN(eps = 210, min_samples = 6).fit(PCA_mealdata) 
-
-for i in range(dbscan.labels_.size):
-    if dbscan.labels_[i] == -1:
-        min = float('inf')
-        l = -1
-        for j in range(dbscan.labels_.size):
-            if dbscan.labels_[j] != -1:
-                eucDist = np.linalg.norm(PCA_mealdata[i] - PCA_mealdata[j])
-                if eucDist < min:
-                    min = eucDist
-                    l = dbscan.labels_[j]
-        dbscan.labels_[i] = l            
-        
-dbscan.labels_ = np.array(dbscan.labels_)
-
+# aim is to get N clusters
+# dcscan can give you any number of clusters
 dbScanSSE = 0
-for i in range(nBins):
-    cluster = PCA_mealdata[dbscan.labels_ == i]
-    clusterMean = cluster.mean(axis = 0)
-    dbScanSSE += ((cluster - clusterMean) ** 2).sum()
-
-clusterBinMatrix = [[0 for i in range(nBins)] for i in range(nBins)]
-for i in range(dbscan.labels_.shape[0]):
-    clusterBinMatrix[dbscan.labels_[i]][int(mealDf.iloc[i][29])] += 1
-DbScanEntropy = [0,0,0,0,0,0]
+DbScanEntropy = 0
 DbScanPurity = 0
-totalPoints = sum(sum(clusterBinMatrix,[]))
-for i in range(len(clusterBinMatrix)):
-    DbScanPurity += (max(clusterBinMatrix[i])*1.0)/(totalPoints*1.0)
-    for j in range(len(clusterBinMatrix[i])):
-        P = (clusterBinMatrix[i][j]*1.0)/(sum(clusterBinMatrix[i])*1.0)
-        if(P != 0):
-            DbScanEntropy[i] += (-P) * math.log(P,2) * (sum(clusterBinMatrix[i])*1.0/(totalPoints)*1.0)    
-DbScanEntropy = sum(DbScanEntropy)
-
 result = [
-    [SSE_KMeans,
+    [kmeansse,
     dbScanSSE,
-    Kmeans_Entropy,
+    kmeansentropy,
     DbScanEntropy,
-    Kmeans_Purity,
+    kmeanspurity,
     DbScanPurity]
 ]
 
-resultDf = pandas.DataFrame(result)
-resultDf.to_csv('test1Results.csv',float_format='%.6f',index=False, header=False)
-
-
-# meal_feature_matrix=pd.concat([matrix_firstmeal, matrix_secondmeal]).reset_index().drop(columns='index')
-# non_meal_feature_matrix=pd.concat([matrix_first_no_meal, matrix_second_no_meal]).reset_index().drop(columns='index')
-
-
-
-# Cluster Meal data based on the amount of carbohydrates in each meal
-
-
-    #perform clustering
-        # Use the features in your Project 2 to cluster the meal data into n clusters. Use DBSCAN and KMeans.
-        # Report your accuracy of clustering based on SSE, entropy, and purity metrics.
-        # k =N 
-        # but dbscan doesnt take clusters as a parameter. how do you get it to N? if they give you 3 compute SSE for each. then arrange
-        # them in decreasing order of SSE. 
-            # take 1st (max sse) and bisect by kmeans.
-            # then it goes from 3 to 4
-            # this is just 1 solution. up to you how you want to do it.
-
-
-    # calculate entropy and purity
-        # create matrix
-
-
-
-#report results
-    # A Result.csv file which contains a 1 X 6 vector. The vector should have the following format:
-    # SSE for Kmeans
-    # SSE for DBSCAN
-    # Entropy for KMeans
-    # Entropy for DBSCAN
-    # Purity for KMeans
-    # Purity for DBSCAN
-# df.to_csv('Result.csv',index=False,header=False)
-
+df = pd.DataFrame([kmeansse, dbScanSSE, kmeansentropy, DbScanEntropy, kmeanspurity, DbScanPurity])
+df.to_csv('Result.csv', index=False, header=False)
 
 # The autograder in Coursera will evaluate your code based on the following criteria:
 # ● 50 points for developing a code in Python that takes the dataset and performs clustering.
