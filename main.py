@@ -116,16 +116,8 @@ kmeanspurity = np.sum(np.amax(contingency_matrix, axis=0)) / np.sum(contingency_
 dbScanSSE = 0
 DbScanEntropy = 0
 DbScanPurity = 0
-result = [
-    [kmeansse,
-    dbScanSSE,
-    kmeansentropy,
-    DbScanEntropy,
-    kmeanspurity,
-    DbScanPurity]
-]
 
-df = pd.DataFrame([kmeansse, dbScanSSE, kmeansentropy, DbScanEntropy, kmeanspurity, DbScanPurity])
+df = pd.DataFrame([[kmeansse, dbScanSSE, kmeansentropy, DbScanEntropy, kmeanspurity, DbScanPurity]])
 df.to_csv('Result.csv', index=False, header=False)
 
 # The autograder in Coursera will evaluate your code based on the following criteria:
