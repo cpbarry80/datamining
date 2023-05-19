@@ -3,6 +3,12 @@ from auto import get_data
 import csv
 import numpy as np
 
+
+# Extract feature data from a data set.
+# ● Synchronize data from two sensors.
+# ● Compute and report overall statistical measures from data.
+
+
 cgm = pd.read_csv("CGMData.csv")
 insulin = pd.read_csv("InsulinData.csv")
 
@@ -44,4 +50,16 @@ with file:
     write = csv.writer(file)
     write.writerows(csv_data)
 
+# 1. Percentage time in hyperglycemia (CGM > 180 mg/dL),
+# 2. percentage of time in hyperglycemia critical (CGM > 250 mg/dL),
+# 3. percentage time in range (CGM >= 70 mg/dL and CGM <= 180 mg/dL),
+# 4. percentage time in range secondary (CGM >= 70 mg/dL and CGM <= 150 mg/dL),
+# 5. percentage time in hypoglycemia level 1 (CGM < 70 mg/dL), and
+# 6. percentage time in hypoglycemia level 2 (CGM < 54 mg/dL).
 
+# Each of the above-mentioned metrics are extracted in three different time intervals: daytime (6 am to
+# midnight), overnight (midnight to 6 am), and whole day (12 am to 12 am
+
+# The metrics will be computed for two cases:
+# ● Case A: Manual mode
+# ● Case B: Auto mode

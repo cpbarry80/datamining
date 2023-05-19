@@ -20,7 +20,7 @@ import numpy as np
 from sklearn import metrics
 # https://www.coursera.org/learn/cse572/lecture/sxDM5/project-3-cluster-validation-introductory-video
 
-# Extract features from Meal data
+# Extract features from Meal dataff
     #extract ground truth
         # Derive the max and min value of meal intake amount from the Y column of the Insulin data. Discretize
         # the meal amount in bins of size 20. Consider each row in the meal data matrix that you generated in
@@ -55,10 +55,8 @@ for meal in mealtimes:
     officialstart = meal - pd.Timedelta(minutes=30)  
     end = meal + pd.Timedelta(hours=2)    
     glucose = cgm.loc[(cgm['dtimestamp'] >= officialstart) & (cgm['dtimestamp'] <=end)]['Sensor Glucose (mg/dL)'].values.tolist()
-
     carbs = insulin.loc[(insulin['dtimestamp'] >= officialstart) & (insulin['dtimestamp'] <=end)]['BWZ Carb Input (grams)']
 
-    # should this be the summed values of carbs for this meal? 
     mincarb = carbs.min()
     maxcarb = carbs.max()
     if mincarb < min_carbs and mincarb is not np.nan:
@@ -80,6 +78,7 @@ meal = meal[meal.isnull().sum(axis=1) < 7].interpolate(method='linear',axis=1, l
 meal = meal[meal.isnull().sum(axis=1) < 1].reset_index(drop=True)
 ## end re use of meal matrix from proj 2
 
+
 #perform clustering
     # Use the features in your Project 2 to cluster the meal data into n clusters. Use DBSCAN and KMeans.
     # Report your accuracy of clustering based on SSE, entropy, and purity metrics.
@@ -90,9 +89,6 @@ meal = meal[meal.isnull().sum(axis=1) < 1].reset_index(drop=True)
         # then it goes from 3 to 4
         # this is just 1 solution. up to you how you want to do it.
 
-
-binsize = 20
-nBins = int((max_carbs - min_carbs)/binsize)
 
 meal_features = get_feature_matrix(meal)
 
@@ -118,7 +114,8 @@ DbScanEntropy = 0
 DbScanPurity = 0
 
 df = pd.DataFrame([[kmeansse, dbScanSSE, kmeansentropy, DbScanEntropy, kmeanspurity, DbScanPurity]])
-df.to_csv('Result.csv', index=False, header=False)
+print(df)
+# df.to_csv('Result.csv', index=False, header=False)
 
 # The autograder in Coursera will evaluate your code based on the following criteria:
 # ● 50 points for developing a code in Python that takes the dataset and performs clustering.
